@@ -63,7 +63,9 @@ REPOMIND ANALYSIS REPORT
    - validation
 
 9. ARCHITECTURE DIAGRAM
-   Include the Mermaid architecture diagram.
+   Copy the generated Mermaid diagram exactly as provided. Do not summarize,
+   simplify, rewrite, escape quotes, add backslashes, or replace it with a
+   shorter diagram.
 
 10. CATEGORY SCORES
    Analyze:

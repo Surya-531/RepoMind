@@ -12,7 +12,7 @@ def print_banner():
     print("""
 ╔══════════════════════════════════════════════════════════╗
 ║          🧠  RepoMind — AI Repo Analyzer                 ║
-║          Powered by Grok (xAI) + LangChain               ║
+║               Powered by AI + LangChain                  ║
 ╚══════════════════════════════════════════════════════════╝
 """)
 

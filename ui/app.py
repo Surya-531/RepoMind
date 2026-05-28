@@ -2,6 +2,7 @@ import os
 import sys
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,8 +11,72 @@ from agents.comparison_agent import compare_repositories
 from tools.github_tool import get_repo_data
 
 
+def render_mermaid_diagram(mermaid_code: str, height: int = 520) -> None:
+    """Render a Mermaid diagram in Streamlit."""
+    components.html(
+        f"""
+        <div class="mermaid">
+        {mermaid_code}
+        </div>
+        <script type="module">
+            import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+            mermaid.initialize({{
+                startOnLoad: true,
+                theme: "dark",
+                flowchart: {{
+                    curve: "basis",
+                    nodeSpacing: 46,
+                    rankSpacing: 64,
+                    padding: 18
+                }},
+                themeVariables: {{
+                    background: "#0e1117",
+                    primaryColor: "#18202b",
+                    primaryTextColor: "#f8fafc",
+                    primaryBorderColor: "#38bdf8",
+                    lineColor: "#94a3b8",
+                    secondaryColor: "#111827",
+                    tertiaryColor: "#020617",
+                    clusterBkg: "#111827",
+                    clusterBorder: "#334155",
+                    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+                }}
+            }});
+        </script>
+        """,
+        height=height,
+        scrolling=True,
+    )
+
+
+def render_report(report: str) -> None:
+    """Render Markdown report and convert Mermaid code blocks into diagrams."""
+    opening = "```mermaid"
+    closing = "```"
+    remaining = report
+
+    while opening in remaining:
+        before, after_opening = remaining.split(opening, 1)
+        if before.strip():
+            st.markdown(before)
+
+        if closing not in after_opening:
+            st.code(after_opening, language="mermaid")
+            return
+
+        mermaid_code, remaining = after_opening.split(closing, 1)
+        mermaid_code = mermaid_code.strip().replace('\\"', '"')
+        render_mermaid_diagram(mermaid_code)
+
+        with st.expander("View Mermaid source"):
+            st.code(mermaid_code, language="mermaid")
+
+    if remaining.strip():
+        st.markdown(remaining)
+
+
 st.set_page_config(
-    page_title="RepoMind X",
+    page_title="RepoMind",
     layout="wide",
 )
 
@@ -34,7 +99,7 @@ with analyze_tab:
                     st.error(data["error"])
                 else:
                     report = analyze_repo(data)
-                    st.markdown(report)
+                    render_report(report)
 
 with compare_tab:
     repo_a_url = st.text_input("Repository A URL")
@@ -54,4 +119,4 @@ with compare_tab:
                     st.error(f"Repository B: {repo_b['error']}")
                 else:
                     report = compare_repositories(repo_a, repo_b)
-                    st.markdown(report)
+                    render_report(report)

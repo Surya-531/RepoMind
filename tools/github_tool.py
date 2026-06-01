@@ -2,9 +2,18 @@ import base64
 import logging
 import re
 import os
+from urllib.parse import quote
+
 import requests
 
-from config import README_CHAR_LIMIT, FILE_LIMIT, COMMIT_LIMIT, GITHUB_TOKEN
+from config import (
+    COMMIT_LIMIT,
+    CONTENT_CHAR_LIMIT,
+    CONTENT_FILE_LIMIT,
+    FILE_LIMIT,
+    GITHUB_TOKEN,
+    README_CHAR_LIMIT,
+)
 
 logger = logging.getLogger("repomind.github_tool")
 
@@ -20,6 +29,53 @@ HEADERS = {
 if GITHUB_TOKEN:
     HEADERS["Authorization"] = f"Bearer {GITHUB_TOKEN}"
     logger.info("GitHub token loaded — using authenticated requests.")
+
+CONFIG_FILE_NAMES = {
+    ".env.example",
+    ".gitlab-ci.yml",
+    "Dockerfile",
+    "docker-compose.yml",
+    "package.json",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "requirements.txt",
+    "pyproject.toml",
+    "Pipfile",
+    "poetry.lock",
+    "pom.xml",
+    "build.gradle",
+    "settings.gradle",
+    "go.mod",
+    "Cargo.toml",
+}
+
+SOURCE_EXTENSIONS = (
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".go",
+    ".rb",
+    ".php",
+    ".cs",
+    ".rs",
+)
+
+IMPORTANT_PATH_HINTS = (
+    "auth",
+    "login",
+    "jwt",
+    "session",
+    "security",
+    "middleware",
+    "user",
+    "account",
+    "config",
+    ".github/workflows",
+)
 
 
 def parse_repo_url(repo_url: str) -> tuple[str, str]:
@@ -101,6 +157,69 @@ def fetch_commits(owner: str, repo: str) -> list[str]:
         return []
 
 
+def should_fetch_file(path: str) -> bool:
+    """Choose high-signal files for repository Q&A."""
+    normalized = path.replace("\\", "/")
+    name = normalized.rsplit("/", 1)[-1]
+    lower_path = normalized.lower()
+
+    if normalized in CONFIG_FILE_NAMES or name in CONFIG_FILE_NAMES:
+        return True
+
+    if lower_path.startswith(".github/workflows/"):
+        return True
+
+    if any(hint in lower_path for hint in IMPORTANT_PATH_HINTS):
+        return lower_path.endswith(SOURCE_EXTENSIONS) or "." in name
+
+    return lower_path.endswith(SOURCE_EXTENSIONS) and (
+        normalized.count("/") <= 2
+        or name.lower() in {"app.py", "main.py", "server.js", "index.js"}
+    )
+
+
+def fetch_file_content(owner: str, repo: str, path: str) -> str:
+    """Fetch and decode a single text file from the repository."""
+    encoded_path = quote(path, safe="/")
+    url = f"{BASE_URL}/repos/{owner}/{repo}/contents/{encoded_path}"
+
+    try:
+        res = requests.get(url, headers=HEADERS, timeout=10)
+        if res.status_code != 200:
+            logger.warning(f"Could not fetch {path} (HTTP {res.status_code})")
+            return ""
+
+        payload = res.json()
+        if payload.get("encoding") != "base64" or "content" not in payload:
+            return ""
+
+        decoded = base64.b64decode(payload["content"]).decode("utf-8", errors="replace")
+        return decoded[:CONTENT_CHAR_LIMIT]
+    except Exception as e:
+        logger.error(f"Error fetching file content for {path}: {e}")
+        return ""
+
+
+def fetch_selected_file_contents(owner: str, repo: str, files: list[str]) -> list[dict]:
+    """Fetch selected config/source files to improve repository Q&A accuracy."""
+    selected = [path for path in files if should_fetch_file(path)]
+    selected = selected[:CONTENT_FILE_LIMIT]
+    file_contents = []
+
+    for path in selected:
+        content = fetch_file_content(owner, repo, path)
+        if content.strip():
+            file_contents.append(
+                {
+                    "path": path,
+                    "content": content,
+                }
+            )
+
+    logger.info(f"Fetched {len(file_contents)} file contents for Q&A")
+    return file_contents
+
+
 def fetch_repo_meta(owner: str, repo: str) -> dict:
     """Fetch basic repo metadata (stars, forks, language, etc.)."""
     url = f"{BASE_URL}/repos/{owner}/{repo}"
@@ -138,6 +257,7 @@ def get_repo_data(repo_url: str) -> dict:
     files = fetch_file_tree(owner, repo)
     commits = fetch_commits(owner, repo)
     meta = fetch_repo_meta(owner, repo)
+    file_contents = fetch_selected_file_contents(owner, repo, files)
 
     # Check if the repo actually exists / is accessible
     if not files and not commits and readme == "No README available.":
@@ -154,6 +274,7 @@ def get_repo_data(repo_url: str) -> dict:
         "owner": owner,
         "readme": readme[:5000],
         "files": files,
+        "file_contents": file_contents,
         "commits": commits,
         "meta": meta,
         "file_count": len(files),

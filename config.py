@@ -20,6 +20,8 @@ MODEL_NAME = "anthropic/claude-3-haiku"
 README_CHAR_LIMIT = 3000
 FILE_LIMIT = 50
 COMMIT_LIMIT = 5
+CONTENT_FILE_LIMIT = 20
+CONTENT_CHAR_LIMIT = 12000
 
 # Optional GitHub token (increases rate limit from 60 to 5000 req/hr)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")

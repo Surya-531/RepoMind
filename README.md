@@ -1,6 +1,7 @@
 # 🧠 RepoMind — AI GitHub Repository Analyzer
+Live Link : https://repomind-09ld.onrender.com/
 
-RepoMind uses **Grok API (xAI)** + **LangChain** to analyze any public GitHub repository and produce a structured engineering report.
+RepoMind uses **OpenRouter API (xAI)** + **LangChain** to analyze any public GitHub repository and produce a structured engineering report.
 
 ---
 

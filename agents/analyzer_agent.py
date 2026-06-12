@@ -110,6 +110,9 @@ Generate the full engineering report now.
 
 def create_llm() -> ChatOpenAI:
     """Initialize the LLM with API settings."""
+    if not OPENROUTER_API_KEY:
+        raise RuntimeError("OPENROUTER_API_KEY is not set. Add it in your Render environment variables.")
+
     logger.info(f"Initializing LLM: model={MODEL_NAME}, base_url={BASE_URL}")
     return ChatOpenAI(
         api_key=OPENROUTER_API_KEY,

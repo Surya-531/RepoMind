@@ -4,6 +4,9 @@ from config import BASE_URL, MODEL_NAME, OPENROUTER_API_KEY
 
 
 def answer_question(vectorstore, question: str) -> str:
+    if not OPENROUTER_API_KEY:
+        raise RuntimeError("OPENROUTER_API_KEY is not set. Add it in your Render environment variables.")
+
     docs = vectorstore.similarity_search(question, k=6)
 
     context_blocks = []

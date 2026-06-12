@@ -1,7 +1,7 @@
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 import re
-import os
 from urllib.parse import quote
 
 import requests
@@ -22,7 +22,6 @@ BASE_URL = "https://api.github.com"
 
 HEADERS = {
     "Accept": "application/vnd.github+json",
-    "Authorization": f"Bearer {os.getenv('GITHUB_TOKEN')}"
 }
 
 # Add auth token if provided (raises rate limit from 60 to 5000/hr)
@@ -206,15 +205,22 @@ def fetch_selected_file_contents(owner: str, repo: str, files: list[str]) -> lis
     selected = selected[:CONTENT_FILE_LIMIT]
     file_contents = []
 
-    for path in selected:
-        content = fetch_file_content(owner, repo, path)
-        if content.strip():
-            file_contents.append(
-                {
-                    "path": path,
-                    "content": content,
-                }
-            )
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        future_to_path = {
+            executor.submit(fetch_file_content, owner, repo, path): path
+            for path in selected
+        }
+
+        for future in as_completed(future_to_path):
+            path = future_to_path[future]
+            content = future.result()
+            if content.strip():
+                file_contents.append(
+                    {
+                        "path": path,
+                        "content": content,
+                    }
+                )
 
     logger.info(f"Fetched {len(file_contents)} file contents for Q&A")
     return file_contents
@@ -253,10 +259,18 @@ def get_repo_data(repo_url: str) -> dict:
     except ValueError as e:
         return {"error": str(e)}
 
-    readme = fetch_readme(owner, repo)
-    files = fetch_file_tree(owner, repo)
-    commits = fetch_commits(owner, repo)
-    meta = fetch_repo_meta(owner, repo)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            "readme": executor.submit(fetch_readme, owner, repo),
+            "files": executor.submit(fetch_file_tree, owner, repo),
+            "commits": executor.submit(fetch_commits, owner, repo),
+            "meta": executor.submit(fetch_repo_meta, owner, repo),
+        }
+        readme = futures["readme"].result()
+        files = futures["files"].result()
+        commits = futures["commits"].result()
+        meta = futures["meta"].result()
+
     file_contents = fetch_selected_file_contents(owner, repo, files)
 
     # Check if the repo actually exists / is accessible

@@ -109,16 +109,20 @@ with analyze_tab:
                 if "error" in data:
                     st.error(data["error"])
                 else:
-                    report = analyze_repo(data)
-                    st.session_state.repo_data = data
-                    st.session_state.analysis_report = report
-                    st.session_state.qa_answer = ""
-
                     try:
-                        st.session_state.vectorstore = build_vector_store(data, report)
+                        report = analyze_repo(data)
                     except Exception as e:
-                        st.session_state.vectorstore = None
-                        st.warning(f"Analysis completed, but RepoMind Q&A could not be prepared: {e}")
+                        st.error(f"Analysis failed: {e}")
+                    else:
+                        st.session_state.repo_data = data
+                        st.session_state.analysis_report = report
+                        st.session_state.qa_answer = ""
+
+                        try:
+                            st.session_state.vectorstore = build_vector_store(data, report)
+                        except Exception as e:
+                            st.session_state.vectorstore = None
+                            st.warning(f"Analysis completed, but RepoMind Q&A could not be prepared: {e}")
 
     if st.session_state.analysis_report:
         render_report(st.session_state.analysis_report)

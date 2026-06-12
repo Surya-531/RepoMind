@@ -25,6 +25,3 @@ CONTENT_CHAR_LIMIT = 12000
 
 # Optional GitHub token (increases rate limit from 60 to 5000 req/hr)
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
-
-if not OPENROUTER_API_KEY:
-    raise EnvironmentError("OPENROUTER_API_KEY is not set. Please check your .env file.")

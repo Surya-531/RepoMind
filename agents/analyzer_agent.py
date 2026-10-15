@@ -119,6 +119,7 @@ def create_llm() -> ChatOpenAI:
         base_url=BASE_URL,
         model=MODEL_NAME,
         temperature=0.3,
+        max_tokens=4000,
         default_headers={
             "HTTP-Referer": "http://localhost",
             "X-Title": "RepoMind",

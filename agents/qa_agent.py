@@ -20,6 +20,7 @@ def answer_question(vectorstore, question: str) -> str:
         api_key=OPENROUTER_API_KEY,
         base_url=BASE_URL,
         model=MODEL_NAME,
+        max_tokens=4000,
         temperature=0.2,
         default_headers={
             "HTTP-Referer": "http://localhost",

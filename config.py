@@ -14,7 +14,7 @@ logger = logging.getLogger("repomind")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 BASE_URL = "https://openrouter.ai/api/v1"
-MODEL_NAME = "anthropic/claude-3-haiku"
+MODEL_NAME = "anthropic/claude-haiku-4.5"
 
 # Limits
 README_CHAR_LIMIT = 3000
